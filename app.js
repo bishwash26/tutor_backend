@@ -1,4 +1,5 @@
 //jshint esversion:6
+const bcrypt = require('bcrypt');
 const express=require("express");
 const bodyparser=require("body-parser");
 const ejs=require("ejs");
@@ -6,12 +7,16 @@ const mongoose=require("mongoose");
 const encrypt=require("mongoose-encryption");
 require('dotenv').config()
 
+const saltRounds=10;
+
+
 
 const app=express();
 app.use(express.static("public"));
 app.set('view engine','ejs');
 app.use(bodyparser.urlencoded({extended:true}))
 
+const saltrounds=10;
 
 
 mongoose.connect("mongodb://localhost:27017/userDB",{useNewUrlParser:true})
@@ -28,9 +33,11 @@ const User= new mongoose.model("User",userSchema);
 
 
 app.post("/register",function(req,res){
+    bcrypt.hash(req.body.password,saltRounds,function(err,hash){
+        console.log(hash);
     const newUser=new User({
         email:req.body.username,
-        password:req.body.password,
+        password:hash,
     });
 newUser.save(function(err){
     if (err){
@@ -39,8 +46,10 @@ newUser.save(function(err){
     else{
         res.render("secrets");
     }
-})
-})
+});
+});
+});
+
 app.post("/login",function(req,res){
     const user=req.body.username;
     const pw=req.body.password;
@@ -51,14 +60,23 @@ app.post("/login",function(req,res){
         else{
             if( founduser)
             {
-                if (founduser.password===pw){
-                    res.render("secrets");
-                }
-                else{
-                    res.send("<h1>Incorrect password</h1>")
-                }
-            }
+                console.log(founduser.password);
 
+             bcrypt.compare(pw,founduser.password,function(err,result){
+                 if (err){
+                    res.send("<h1>Incorrect password</h1>")
+                 }
+                 else{
+                     console.log(result);
+                     if(result){
+                     res.render("secrets");
+                     }
+                     else {
+                         res.send("<h1>Invlaid password</h1>")
+                     }
+                 }
+             });
+            }
         }
     })
 })
